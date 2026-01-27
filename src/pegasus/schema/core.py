@@ -1,8 +1,17 @@
 from __future__ import annotations
-from typing import Annotated, Union
-from pydantic import StringConstraints
-from typing import Annotated
+from typing import Annotated, Optional, Union
 from enum import Enum
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    Field,
+    StringConstraints,
+    ValidationError,
+    field_validator,
+    model_validator,
+)
+
+# Variant_id, rsid, GeneId, GeneSymbol, LocusRange, LocusId, and evidence categories are reusuable models (PEG matrix and PEG list)
 
 # ----------------------------
 # Shared helpers
@@ -16,7 +25,12 @@ Identifier = Annotated[str, StringConstraints(strip_whitespace=True, max_length=
 # In JSON/TSV parsing accept true/false/1/0 separately if needed.
 
 # ----------------------------
-# Controlled Identifiers
+# Controlled variant/gene Identifiers
+# ----------------------------
+
+
+# ----------------------------
+# Controlled Ontology Identifiers
 # ----------------------------
 OntologyUnderscoreID = Annotated[
     str,
@@ -53,7 +67,6 @@ class DiseaseStatus(str, Enum):
     healthy = "healthy"
     disease = "disease"
 
-
 class SexComposition(str, Enum):
     male = "male"
     female = "female"
@@ -88,6 +101,7 @@ class AnyEvidenceCategory(str, Enum):
     CROSSP = "Cross-phenotype"
     LIT = "Literature curation"
     DB = "Association from curated database"
+    OTHER = "Other"
 
 EvidenceCategory = Union[
     VariantEvidenceCategory,
@@ -113,3 +127,4 @@ class AncestryCategory(str, Enum):
     SOUTH_ASIAN = "South Asian"
     SOUTH_EAST_ASIAN = "South East Asian"
     SUB_SAHARAN_AFRICAN = "Sub-Saharan African"
+

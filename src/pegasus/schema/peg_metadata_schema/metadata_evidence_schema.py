@@ -8,7 +8,7 @@ from pydantic import (
     HttpUrl
 )
 
-from schema_defintation.control_verb import (
+from pegasus.schema_defintation.control_verb import (
     EntityType,
     EvidenceCategory,
     Text, 

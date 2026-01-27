@@ -5,7 +5,7 @@ from enum import Enum
 from typing import Annotated, Literal, Optional
 
 from pydantic import BaseModel, Field, HttpUrl, StringConstraints
-from schema_defintation.control_verb import Text, LongText, Identifier, ShortText
+from pegasus.schema_defintation.control_verb import Text, LongText, Identifier, ShortText
 
 # ----------------------------
 # Sheet: Integration

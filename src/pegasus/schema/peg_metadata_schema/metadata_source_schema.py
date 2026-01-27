@@ -4,7 +4,7 @@ from typing import Literal, Optional
 
 from pydantic import BaseModel, Field, HttpUrl
 
-from schema_defintation.control_verb import (
+from pegasus.schema_defintation.control_verb import (
     DiseaseStatus,
     Identifier,
     LongText,
