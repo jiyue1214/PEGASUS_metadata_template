@@ -17,6 +17,7 @@ class PegListValidation:
         self.evidence_category_keys = evidence_category
         self.list_identifier_keys = list_identifier_keys
         self.other_identifiers = other_genetic_identifiers
+        self.headers = self.read_header()
 
 
     def _build_identifier_aliases(self) -> Dict[str, str]:
@@ -39,7 +40,7 @@ class PegListValidation:
             header = next(reader, [])
         return list(header)
 
-    def classify_headers(self, headers: list) -> dict[str, list[str]]:
+    def classify_headers(self) -> dict[str, list[str]]:
         """Classify headers into all categories in one pass."""
 
         genetic = []
@@ -48,14 +49,14 @@ class PegListValidation:
         evidence = []
         other = []
 
-        genetic = [x for x in headers if x in self.list_identifier_keys]
-        other_id =[x for x in headers if any(x.startswith(prefix) for prefix in self.other_identifiers)]
-        int_cols = [x for x in headers if x.startswith("INT_")]
-        evidence = [x for x in headers
+        genetic = [x for x in self.headers if x in self.list_identifier_keys]
+        other_id =[x for x in self.headers if any(x.startswith(prefix) for prefix in self.other_identifiers)]
+        int_cols = [x for x in self.headers if x.startswith("INT_")]
+        evidence = [x for x in self.headers
                     if x in self.evidence_category_keys
                     or ( "_" in x and x.split("_", 1)[0] in self.evidence_category_keys )
                     ]
-        other = [x for x in headers if x not in genetic + other_id + int_cols + evidence]
+        other = [x for x in self.headers if x not in genetic + other_id + int_cols + evidence]
     
         return {
             "genetic": genetic,

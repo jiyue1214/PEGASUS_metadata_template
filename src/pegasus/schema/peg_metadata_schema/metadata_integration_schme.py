@@ -5,7 +5,7 @@ from enum import Enum
 from typing import Annotated, Literal, Optional
 
 from pydantic import BaseModel, Field, HttpUrl, StringConstraints
-from pegasus.schema_defintation.control_verb import Text, LongText, Identifier, ShortText
+from pegasus.schema.core import Text, LongText, Identifier, ShortText
 
 # ----------------------------
 # Sheet: Integration
@@ -57,7 +57,7 @@ class Integration(BaseModel):
         json_schema_extra={"header": "method_tag", "example": "soft_pops"}
     )
 
-    threshold: Optional[float] = Field(
+    threshold: Optional[ShortText] = Field(
         ...,        
         description="Threshold applied to define significance or inclusion criteria.",
         json_schema_extra={"header": "threshold", "example": "0.05"}

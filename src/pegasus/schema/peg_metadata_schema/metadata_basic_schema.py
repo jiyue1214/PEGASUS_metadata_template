@@ -1,7 +1,11 @@
 from typing import  Literal, Optional
-from pydantic import BaseModel, Field, HttpUrl
-from pegasus.schema_defintation.control_verb import (
-    Text, LongText, Identifier, ShortText,
+import re
+from pydantic import BaseModel, Field, HttpUrl, model_validator
+from pegasus.schema.core import (
+    Text,
+    LongText,
+    Identifier,
+    ShortText,
     OntologyUnderscoreID,
     GCST,
     PMID,
@@ -71,6 +75,43 @@ class DatasetDescription(BaseModel):
         description="Broad ancestry category that best describes the sample. Multiple values can be listed separated by '|'.",
         json_schema_extra={"header": "gwas_sample_ancestry_label", "example": "European"},
     )
+
+    @model_validator(mode="after")
+    def _validate_gwas_fields_when_not_gcst(self) -> "DatasetDescription":
+        """If gwas_source is not GCST, require other gwas_* fields."""
+        gwas_source = self.gwas_source
+        
+        # Skip validation if gwas_source is not provided
+        if not gwas_source:
+            return self
+        
+        # Check if gwas_source is GCST (matches pattern GCST followed by digits)
+        gwas_source_str = str(gwas_source).strip()
+        is_gcst = bool(re.match(r"^GCST\d+$", gwas_source_str))
+        
+        # If not GCST, these fields become required
+        if not is_gcst:
+            required_fields = {
+                "gwas_samples_description": self.gwas_samples_description,
+                "gwas_sample_size": self.gwas_sample_size,
+                "gwas_case_control_study": self.gwas_case_control_study,
+                "gwas_sample_ancestry": self.gwas_sample_ancestry,
+                "gwas_sample_ancestry_label": self.gwas_sample_ancestry_label,
+            }
+            
+            missing_fields = []
+            for field_name, field_value in required_fields.items():
+                if field_value is None or (isinstance(field_value, str) and field_value.strip() == ""):
+                    missing_fields.append(field_name)
+            
+            if missing_fields:
+                field_names = ", ".join(sorted(missing_fields))
+                raise ValueError(
+                    f"When gwas_source is not a GCST identifier, the following fields are required: {field_names}. "
+                    f"Current gwas_source: '{gwas_source}'"
+                )
+        
+        return self
 
 class GenomicIdentifier(BaseModel):
     """

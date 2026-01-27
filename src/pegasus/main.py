@@ -22,6 +22,7 @@ from pegasus.template_convert.json_builder import xlsx_to_json
 from pegasus.template_convert.yaml_builder import xlsx_to_yaml
 from pegasus.validation.list_validation import PegListValidation
 from pegasus.validation.matrix_validation import PegMatrixValidation
+from pegasus.validation.metadata_validation import PegMetadataValidation
 
 console = Console()
 
@@ -122,27 +123,70 @@ def validate_list(file_path: Path, error_limit: int = 50) -> list[dict]:
 
 def validate_matrix(file_path: Path, progress: bool = False) -> list[dict]:
     """Validate a PEG matrix file."""
-    validator = PegMatrixValidation(file_path)
+        
     return validator.validate_pegmatrix(progress=progress)
 
 
-def validate_metadata(file_path: Path) -> list[dict]:
+def validate_metadata(file_path: Path, error_limit: int = 50) -> list[dict]:
     """Validate a PEG metadata file."""
-    # TODO: Metadata validation not implemented yet
-    return [
-        {
-            "step": "Metadata Validation",
-            "type": "warning",
-            "message": "Metadata validation is not yet implemented.",
-        }
-    ]
+    validator = PegMetadataValidation(file_path)
+    return validator.validate_metadata(error_limit=error_limit)
 
 #----------------------------------------------
 # cross validation functions
 #----------------------------------------------
 
+def cross_validate_list_matrix(
+    list_file: Path,
+    matrix_file: Path,
+    metadata_file: Path | None = None,
+) -> None:
+    """Cross-validate PEG list, matrix, and metadata files."""
 
+    list_validator = PegListValidation(list_file)
+    matrix_validator = PegMatrixValidation(matrix_file)
+    metadata_validator = PegMetadataValidation(metadata_file)
 
+    list_columns = list_validator.classify_headers()
+    matrix_columns = matrix_validator.classify_headers()    
+    
+    # metadata columns
+    metadata_columns = metadata_validator.cross_check_column_names()
+    metadata_columns = metadata_columns["Evidence"] + metadata_columns["Integration"]
+
+    matrix_evidence = set(matrix_columns["evidence"]+ matrix_columns["int"])
+    metadata_evidence = set(metadata_columns)
+    
+    if matrix_evidence != metadata_evidence:
+        console.print("[bold red]Error:[/bold red] Mismatch in evidence columns between matrix and metadata files.")
+        extra = matrix_evidence - metadata_evidence
+        missing = metadata_evidence - matrix_evidence
+    if extra:
+        console.print(f"  Matrix has extra evidence columns not in metadata: {sorted(extra)}")
+    if missing:
+        console.print(f"  Metadata has extra evidence columns not in matrix: {sorted(missing)}")
+
+    # from metadata, get the records for the line which authors_conclusion is true
+    author_conclusion = metadata_validator.get_author_conclusion_records()
+    if not author_conclusion:
+        console.print("[bold red]Error:[/bold red] No author conclusion records found.")
+        return
+    
+    conclusion_column_names=author_conclusion[0]["column_names"]
+    conclusion_evidence_steams=author_conclusion[0]["evidence_streams_included"].split("|")
+    conclusion_int_tags=author_conclusion[0]["integrations_included"].split("|")
+
+    if conclusion_column_names not in matrix_columns:
+        console.print("[bold red]Error:[/bold red] Conclusion column names found in matrix file.")
+        return
+
+    if conclusion_column_names not in list_columns:
+        console.print("[bold red]Error:[/bold red] Conclusion column names found in list file.")
+        return
+    
+    # Should we check the stream and tag here? 
+
+    return
 #----------------------------------------------
 # Error formatting and UI response creation
 #----------------------------------------------
@@ -582,10 +626,13 @@ def handle_validate(args: argparse.Namespace) -> int:
     file_paths: dict[str, Path | None] = {}
     has_errors = False
 
+    # Access column names via: metadata_validator.sheet_data[sheet_name]["found_fields"]
+    metadata_validator: PegMetadataValidation | None = None
+
     validators = {
         "list": lambda p: validate_list(p, error_limit=args.error_limit),
         "matrix": lambda p: validate_matrix(p, progress=args.progress),
-        "metadata": validate_metadata,
+        "metadata": lambda p: validate_metadata(p, error_limit=args.error_limit),
     }
     
     # Helper to print status (only for text format)
@@ -594,9 +641,17 @@ def handle_validate(args: argparse.Namespace) -> int:
             console.print(msg)
 
     def run_validation(file_type: str, file_path: Path) -> None:
-        nonlocal has_errors
+        nonlocal has_errors, metadata_validator
         status_print(f"[cyan]Validating {file_type} file:[/cyan] {file_path}")
-        results = validators[file_type](file_path)
+        
+        # For metadata, store the validator instance for cross-file validation
+        if file_type == "metadata":
+            validator = PegMetadataValidation(file_path)
+            results = validator.validate_metadata(error_limit=args.error_limit)
+            metadata_validator = validator
+        else:
+            results = validators[file_type](file_path)
+        
         all_results[file_type] = results
         file_paths[file_type] = file_path
         if any(e.get("type") == "error" for e in results):

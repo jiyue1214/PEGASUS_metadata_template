@@ -24,6 +24,33 @@ Validation strategy:
 - Fixed columns are validated in chunks (first 50k rows, then remaining).
 - Errors are grouped by column and check, with row numbers and sample values.
 
+## PEG metadata (`metadata_validation.py`)
+Sheet handling:
+- Reads Excel sheets with header row at row 2; skips the example row.
+- Required sheets: DatasetDescription, GenomicIdentifier, Evidence, Integration, Source, Method.
+- Unknown columns produce warnings; missing required columns are errors.
+- String-typed fields accept numeric cell values (coerced to strings).
+
+DatasetDescription conditional rule:
+- If `gwas_source` is GCST*, then other GWAS fields remain optional.
+- If `gwas_source` is present and not GCST*, the following become required:
+  - `gwas_samples_description`
+  - `gwas_sample_size`
+  - `gwas_case_control_study`
+  - `gwas_sample_ancestry`
+  - `gwas_sample_ancestry_label`
+
+Evidence sheet rules:
+- Prefilled Evidence rows are ignored when `evidence_category` is 0 or 0.0.
+- `evidence_category_abbreviation` must map to `evidence_category` per `EVIDENCE_CATEGORY_MAP`.
+
+Cross-sheet rules:
+- Evidence must have >2 validated rows.
+- Integration must have >1 validated row.
+- Exactly one Integration row must have `author_conclusion = TRUE`.
+- Every `source_tag` referenced in Evidence must exist in Source.
+- Every `method_tag` referenced in Evidence or Integration must exist in Method.
+
 ### PEG list (`list_validation.py`)
 Header checks:
 - Required identifier columns must be present (from `ListIdentifiers`):
@@ -40,7 +67,7 @@ Row checks (Pydantic, `PegListSchema` + `ListIdentifiers`):
 - Integration columns: accepted as strings (no strict validation yet).
 
 ## Notes / gaps to address later
-- Metadata schemas exist but there is no explicit validator wired for them yet.
+- Metadata validator is wired and enforces per-sheet + cross-sheet rules.
 - Matrix header validation currently stops on any unknown header (warning + early return).
 - PEG list PrimaryVariantID validator only accepts chr:pos:ref:alt even though message mentions rsID.
 
@@ -69,6 +96,8 @@ Row checks (Pydantic, `PegListSchema` + `ListIdentifiers`):
   - PEG **matrix** TSV validation using Pandera + header rules.
 - `src/pegasus/validation/list_validation.py`
   - PEG **list** TSV validation using Pydantic + header rules.
+- `src/pegasus/validation/metadata_validation.py`
+  - PEG **metadata** XLSX validation using Pydantic row checks plus cross-sheet rules.
 
 ## Why Pandera for PEG Matrix while Pydantic for PEG List
 - PEG matrix is large, tabular, and contains fixed-column; Pandera is optimized for DataFrame validation and can validate in chunks for scale.

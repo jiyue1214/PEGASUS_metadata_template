@@ -109,6 +109,38 @@ EvidenceCategory = Union[
     AnyEvidenceCategory,
 ]
 
+# Evidence category mapping (abbreviation -> full name)
+EVIDENCE_CATEGORY_MAP: dict[str, str] = {
+    member.name: member.value
+    for enum_cls in (VariantEvidenceCategory, GeneEvidenceCategory, AnyEvidenceCategory)
+    for member in enum_cls
+}
+
+class EvidenceCategoryAbbreviation(str, Enum):
+    LD = "LD"
+    FINEMAP = "FINEMAP"
+    COLOC = "COLOC"
+    QTL = "QTL"
+    MR = "MR"
+    REG = "REG"
+    CHROMATIN = "CHROMATIN"
+    FUNC = "FUNC"
+    PROX = "PROX"
+    GWAS = "GWAS"
+    PHEWAS = "PHEWAS"
+    PPI = "PPI"
+    SET = "SET"
+    GENEBASE = "GENEBASE"
+    EXP = "EXP"
+    PERTURB = "PERTURB"
+    KNOW = "KNOW"
+    TPWAS = "TPWAS"
+    DRUG = "DRUG"
+    CROSSP = "CROSSP"
+    LIT = "LIT"
+    DB = "DB"
+    OTHER = "OTHER"
+
 class AncestryCategory(str, Enum):
     ABORIGINAL_AUSTRALIAN = "Aboriginal Australian"
     AFRICAN_AMERICAN_AFRO_CARIBBEAN = "African American or Afro-Caribbean"
@@ -127,4 +159,3 @@ class AncestryCategory(str, Enum):
     SOUTH_ASIAN = "South Asian"
     SOUTH_EAST_ASIAN = "South East Asian"
     SUB_SAHARAN_AFRICAN = "Sub-Saharan African"
-
