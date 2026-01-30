@@ -123,7 +123,7 @@ def validate_list(file_path: Path, error_limit: int = 50) -> list[dict]:
 
 def validate_matrix(file_path: Path, progress: bool = False) -> list[dict]:
     """Validate a PEG matrix file."""
-        
+    validator = PegMatrixValidation(file_path)
     return validator.validate_pegmatrix(progress=progress)
 
 
@@ -145,6 +145,9 @@ def cross_validate_list_matrix(
 
     list_validator = PegListValidation(list_file)
     matrix_validator = PegMatrixValidation(matrix_file)
+    if metadata_file is None:
+        console.print("[bold yellow]Warning:[/bold yellow] Metadata file missing; skipping cross validation.")
+        return
     metadata_validator = PegMetadataValidation(metadata_file)
 
     list_columns = list_validator.classify_headers()
@@ -157,14 +160,14 @@ def cross_validate_list_matrix(
     matrix_evidence = set(matrix_columns["evidence"]+ matrix_columns["int"])
     metadata_evidence = set(metadata_columns)
     
-    if matrix_evidence != metadata_evidence:
+    extra = matrix_evidence - metadata_evidence
+    missing = metadata_evidence - matrix_evidence
+    if extra or missing:
         console.print("[bold red]Error:[/bold red] Mismatch in evidence columns between matrix and metadata files.")
-        extra = matrix_evidence - metadata_evidence
-        missing = metadata_evidence - matrix_evidence
-    if extra:
-        console.print(f"  Matrix has extra evidence columns not in metadata: {sorted(extra)}")
-    if missing:
-        console.print(f"  Metadata has extra evidence columns not in matrix: {sorted(missing)}")
+        if extra:
+            console.print(f"  Matrix has extra evidence columns not in metadata: {sorted(extra)}")
+        if missing:
+            console.print(f"  Metadata has extra evidence columns not in matrix: {sorted(missing)}")
 
     # from metadata, get the records for the line which authors_conclusion is true
     author_conclusion = metadata_validator.get_author_conclusion_records()
@@ -177,11 +180,11 @@ def cross_validate_list_matrix(
     conclusion_int_tags=author_conclusion[0]["integrations_included"].split("|")
 
     if conclusion_column_names not in matrix_columns:
-        console.print("[bold red]Error:[/bold red] Conclusion column names found in matrix file.")
+        console.print("[bold red]Error:[/bold red] Conclusion column names not found in matrix file.")
         return
 
     if conclusion_column_names not in list_columns:
-        console.print("[bold red]Error:[/bold red] Conclusion column names found in list file.")
+        console.print("[bold red]Error:[/bold red] Conclusion column names not found in list file.")
         return
     
     # Should we check the stream and tag here? 
@@ -625,6 +628,7 @@ def handle_validate(args: argparse.Namespace) -> int:
     all_results: dict[str, list[dict]] = {}
     file_paths: dict[str, Path | None] = {}
     has_errors = False
+    dir_related_files: dict[str, Path | None] | None = None
 
     # Access column names via: metadata_validator.sheet_data[sheet_name]["found_fields"]
     metadata_validator: PegMetadataValidation | None = None
@@ -665,6 +669,7 @@ def handle_validate(args: argparse.Namespace) -> int:
         if validation_type and validation_type != "all":
             # User specified a type but gave a directory - find that specific file type
             related_files = find_related_files(args.file_path)
+            dir_related_files = related_files
             target_file = related_files.get(validation_type)
             if not target_file:
                 return error_response(
@@ -677,6 +682,7 @@ def handle_validate(args: argparse.Namespace) -> int:
         else:
             # Validate all files found in directory
             related_files = find_related_files(args.file_path)
+            dir_related_files = related_files
             
             if not any(related_files.values()):
                 return error_response(
@@ -722,6 +728,15 @@ def handle_validate(args: argparse.Namespace) -> int:
         
         else:
             run_validation(validation_type, args.file_path)
+
+    # Cross-validate only when input is a directory and all three files exist
+    if args.file_path.is_dir() and dir_related_files:
+        list_file = dir_related_files.get("list")
+        matrix_file = dir_related_files.get("matrix")
+        metadata_file = dir_related_files.get("metadata")
+        if list_file and matrix_file and metadata_file:
+            status_print("[cyan]Cross-validating list, matrix, and metadata files...[/cyan]")
+            cross_validate_list_matrix(list_file, matrix_file, metadata_file)
     
     # Output results
     if args.format == "json":

@@ -24,6 +24,21 @@ Validation strategy:
 - Fixed columns are validated in chunks (first 50k rows, then remaining).
 - Errors are grouped by column and check, with row numbers and sample values.
 
+### PEG list (`list_validation.py`)
+Header checks:
+- Required identifier columns must be present (from `ListIdentifiers`):
+  - `PrimaryVariantID` (alias: `primary_variant_id`, `rsID`)
+  - `GeneSymbol` (alias: `gene_symbol`, `Gene symbol`)
+- At least **one** `INT_` column is required.
+- At least **one** evidence column is required.
+- Unrecognized columns are allowed but reported as warnings and skipped in row validation.
+
+Row checks (Pydantic, `PegListSchema` + `ListIdentifiers`):
+- `PrimaryVariantID`: must match `chr:pos:ref:alt` regex (note: error text mentions rsID, but current validator only accepts chr-formatted IDs).
+- `GeneSymbol`: must be a non-numeric string.
+- Evidence columns: values must parse to **boolean** (`TRUE`/`FALSE` or actual bool).
+- Integration columns: accepted as strings (no strict validation yet).
+
 ## PEG metadata (`metadata_validation.py`)
 Sheet handling:
 - Reads Excel sheets with header row at row 2; skips the example row.
@@ -51,20 +66,13 @@ Cross-sheet rules:
 - Every `source_tag` referenced in Evidence must exist in Source.
 - Every `method_tag` referenced in Evidence or Integration must exist in Method.
 
-### PEG list (`list_validation.py`)
-Header checks:
-- Required identifier columns must be present (from `ListIdentifiers`):
-  - `PrimaryVariantID` (alias: `primary_variant_id`, `rsID`)
-  - `GeneSymbol` (alias: `gene_symbol`, `Gene symbol`)
-- At least **one** `INT_` column is required.
-- At least **one** evidence column is required.
-- Unrecognized columns are allowed but reported as warnings and skipped in row validation.
-
-Row checks (Pydantic, `PegListSchema` + `ListIdentifiers`):
-- `PrimaryVariantID`: must match `chr:pos:ref:alt` regex (note: error text mentions rsID, but current validator only accepts chr-formatted IDs).
-- `GeneSymbol`: must be a non-numeric string.
-- Evidence columns: values must parse to **boolean** (`TRUE`/`FALSE` or actual bool).
-- Integration columns: accepted as strings (no strict validation yet).
+### Cross-file checks (CLI)
+- The CLI runs cross-file checks only when the input path is a directory **and** all three files exist:
+  - `list_*.tsv`, `matrix_*.tsv`, `metadata_*.xlsx`/`.xls`.
+- Cross-checks include:
+  - Matrix evidence columns must match the combined Evidence + Integration columns from metadata.
+  - Metadata must include an `author_conclusion = TRUE` row.
+  - The metadata conclusion column name must exist in both list and matrix headers.
 
 ## Notes / gaps to address later
 - Metadata validator is wired and enforces per-sheet + cross-sheet rules.
