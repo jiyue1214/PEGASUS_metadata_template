@@ -3,7 +3,7 @@
 This catalog lists TSV/XLSX fixtures in `test_data/` and the expected validation outcome.
 
 ## List validation
-| Test| Validator | Expected outcome | Notes |
+| Test Function| Validator | Expected outcome | Notes |
 | --- | --- | --- | --- |
 | success | list | success | Example list file with valid headers and rows. |
 | missing_variant_id | list | error | Header validation error: missing `PrimaryVariantID`. |
@@ -18,7 +18,7 @@ This catalog lists TSV/XLSX fixtures in `test_data/` and the expected validation
 | invalid_more_than_one_list_in_dir| list | error | More than one lists in a folder|
 
 ## Matrix validation
-| Test| Validator | Expected outcome | Notes |
+| Test Function | Validator | Expected outcome | Notes |
 | --- | --- | --- | --- |
 | success | matrix | success | Example matrix file with valid headers and rows. |
 | missing_variant_id | matrix | error | Header validation error: missing `PrimaryVariantID`. |
@@ -34,5 +34,28 @@ This catalog lists TSV/XLSX fixtures in `test_data/` and the expected validation
 | invalid_more_than_one_matrix_in_dir| matrix | error | More than one matrices in a folder|
 
 ## Metadata validation
+| Test File | Validator | Expected outcome | Notes |
+| --- | --- | --- | --- |
+| success | metadata | success | Example metadata file with valid headers and rows. |
+| missing_essential_tab | metadata | failed | Dataset description tab is missing |
+| missing_mandatory_columns_dataset | metadata | failed| missing trait_description in the dataset description|
+| missing_mandatory_columns_identifier | metadata | failed| missing genome_build in the genomic identifer|
+| missing_mandatory_columns_evidence | metadata | failed| missing column_header|
+| missing_mandatory_columns_integration | metadata | failed| missing column_description|
+| gwas_source_is_gwas_catalog | metadata | success | gwas_source is GCSTxxx while missing other gwas_ fields|
+| gwas_source_is_not_gwas_catalog | metadata | failed | gwas_source is NOT GCSTxxx while missing other gwas_ fields|
+| evidence_catgory_not_in_list | metadata| failed | evidence_category is UNKNOWN|
+| evidence_catgory_only_one | metadata| failed | Only one evidence row available|
+| no_integration_row | metadata| failed | integration tab is empty|
+| more_than_one_author_conclusion|  metadata| failed | two rows in the intergation tab are labelled as author_conclusion is True|
+| no_author_conclusion | metadata| failed | two integration rows, but both are author_conclusion=False|
+| evidence_catgory_miss_source_tag | metadata| failed | one source tag used in the evidence but missed in the source tab|
+| evidence_catgory_miss_method_tag | metadata| failed | one method tag used in the evidence but missed in the method tab|
 
 ## Cross validation
+| Test| Validator | Expected outcome | Notes |
+| --- | --- | --- | --- |
+| success| cross | success| success example - toy data|
+| missing_file | cross | failed | missing list file |
+| missing_column_in_metadata | cross | failed | one column in the matrix is missed in metadata evidence tab |
+| missing_conclusion_column | cross | failed | author conclusion column in the metadata is missing in list file |

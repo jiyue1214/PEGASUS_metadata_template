@@ -1,5 +1,9 @@
 # Repo plan (schema + validation)
 ## Validation rules (current behavior)
+
+### High level decision
+1. To keep the tool light weight, we decide not to validate if the HGNC or Ensembl id are validate or now. (Ensembl AP is not stable, also check if they are correct pair need prepared mapping files and also need to make sure they are the latest version).
+
 ### Common header conventions
 - Evidence columns are detected by prefix:
   - The part before the first `_` must match a valid evidence category name from `core.py`.

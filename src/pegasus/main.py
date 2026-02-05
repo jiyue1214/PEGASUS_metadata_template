@@ -19,7 +19,7 @@ from rich.table import Table
 from rich.text import Text
 
 from pegasus.template_convert.json_builder import xlsx_to_json
-from pegasus.template_convert.yaml_builder import xlsx_to_yaml
+from pegasus.template_convert.yaml_builder import xlsx_to_yaml, yaml_dump_no_aliases
 from pegasus.validation.list_validation import PegListValidation
 from pegasus.validation.matrix_validation import PegMatrixValidation
 from pegasus.validation.metadata_validation import PegMetadataValidation
@@ -570,8 +570,7 @@ def handle_convert(args: argparse.Namespace) -> int:
                     console.print(f"[bold green]✓[/bold green] YAML saved to: {args.output_path}")
                 else:
                     # Print to stdout
-                    import yaml
-                    print(yaml.dump(result, default_flow_style=False, allow_unicode=True, sort_keys=False))
+                    print(yaml_dump_no_aliases(result))
                 
                 return 0
             except ImportError:
