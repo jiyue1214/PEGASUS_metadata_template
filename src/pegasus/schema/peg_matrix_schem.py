@@ -26,7 +26,8 @@ class MatrixIdentifiesPydantic(BaseModel):
     GeneSymbol: str = Field(
         ..., 
         description="The gene under consideration in this row. Primary symbol must be the HGNC-approved gene symbol. Alternative/legacy symbols may be provided via GENE_[xyz] (e.g. GENE_alias).", 
-        examples=["VTI1A"]
+        examples=["VTI1A"],
+        pattern = r"^[A-Z][A-Z0-9]*(?:-[A-Z0-9]+)*$"
         )
     LocusRange: Optional[str] = Field(
         None, 
@@ -53,21 +54,15 @@ class MatrixIdentifiesPandera(pa.SchemaModel):
         description="Expected rs followed by digits (e.g., rs1234).",
     )
     GeneID: Series[str] = pa.Field(nullable=False)
-    GeneSymbol: Series[str] = pa.Field(nullable=False,
-                                       coerce=False)
-    
-    @pa.check("GeneSymbol", name="strict_python_str", element_wise=True)
-    def gene_symbol_is_str(cls, value: object) -> bool:
-        # True only when the underlying Python type is exactly `str`
-        return isinstance(value, str)
-
-    @pa.check("GeneSymbol", name="non_numeric_symbol", element_wise=True)
-    def gene_symbol_not_numeric(cls, value: object) -> bool:
-        if not isinstance(value, str):
-            return False
-        stripped = value.strip()
-        return re.fullmatch(r"[+-]?\d+(?:\.\d+)?", stripped) is None
-
+    GeneSymbol: Series[str] = pa.Field(
+        nullable=False,
+        str_matches=r"^[A-Z][A-Z0-9]*(?:-[A-Z0-9]+)*$",
+        description=(
+            "HGNC gene symbol format. "
+            "Uppercase letters and digits only, may contain internal hyphens, "
+            "must start with a letter (e.g. BRCA1, HLA-DQA1, NKX2-1)."
+        ),
+    )
     LocusRange: Series[str] = pa.Field(
         nullable=True,
         str_matches=r"^chr(?:[1-9]|1[0-9]|2[0-2]|X|Y|M|MT):[1-9]\d*-[1-9]\d*$",

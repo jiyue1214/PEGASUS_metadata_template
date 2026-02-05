@@ -11,6 +11,7 @@ from pydantic import BaseModel, ConfigDict, Field, AliasChoices, StrictBool, Str
 VARIANT_ID_PATTERN = re.compile(
     r"^chr(?:[1-9]|1[0-9]|2[0-2]|X|Y|M|MT):[1-9]\d*:[ATGC]+:[ATGC]+$"
 )
+HGNC_SYMBOL_PATTERN = r"^[A-Z][A-Z0-9]*(?:-[A-Z0-9]+)*$"
 
 
 class ListIdentifiers(BaseModel):
@@ -35,16 +36,17 @@ class ListIdentifiers(BaseModel):
         if VARIANT_ID_PATTERN.match(value):
             return value
         raise ValueError(
-            "PrimaryVariantID must be chr:pos:ref:alt or rsID (e.g., rs1234)"
+            "PrimaryVariantID must be chr:pos:ref:alt (e.g., chr10:114754071:T:C)"
         )
 
     @field_validator("GeneSymbol")
     @classmethod
-    def _gene_symbol_not_numeric(cls, value: str) -> str:
-        stripped = value.strip()
-        if re.fullmatch(r"[+-]?\d+(?:\.\d+)?", stripped):
-            raise ValueError("GeneSymbol must be a non-numeric string.")
-        return value
+    def _isinstance_gene_symbol(cls, value: str) -> str:
+        if HGNC_SYMBOL_PATTERN.match(value):
+            return value
+        raise ValueError(
+            "Gene symbol must follow the HGNC-approved gene symbol format (e.g. BRCA1)."
+        )
 
 class PegListSchema(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
