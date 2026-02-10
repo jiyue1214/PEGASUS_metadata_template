@@ -149,6 +149,7 @@ def cross_validate_list_matrix(
         console.print("[bold yellow]Warning:[/bold yellow] Metadata file missing; skipping cross validation.")
         return
     metadata_validator = PegMetadataValidation(metadata_file)
+    metadata_validator.validate_metadata()
 
     list_columns = list_validator.classify_headers()
     matrix_columns = matrix_validator.classify_headers()    
@@ -170,20 +171,22 @@ def cross_validate_list_matrix(
             console.print(f"  Metadata has extra evidence columns not in matrix: {sorted(missing)}")
 
     # from metadata, get the records for the line which authors_conclusion is true
-    author_conclusion = metadata_validator.get_author_conclusion_records()
+    author_conclusion = metadata_validator.return_author_conclusion_rows()
     if not author_conclusion:
         console.print("[bold red]Error:[/bold red] No author conclusion records found.")
         return
     
-    conclusion_column_names=author_conclusion[0]["column_names"]
+    conclusion_column_names=author_conclusion[0]["column_header"]
     conclusion_evidence_steams=author_conclusion[0]["evidence_streams_included"].split("|")
     conclusion_int_tags=author_conclusion[0]["integrations_included"].split("|")
 
-    if conclusion_column_names not in matrix_columns:
+    all_matrix_headers = [h for headers in matrix_columns.values() for h in headers]
+    if conclusion_column_names not in all_matrix_headers:
         console.print("[bold red]Error:[/bold red] Conclusion column names not found in matrix file.")
         return
 
-    if conclusion_column_names not in list_columns:
+    all_list_headers = [h for headers in list_columns.values() for h in headers]
+    if conclusion_column_names not in all_list_headers:
         console.print("[bold red]Error:[/bold red] Conclusion column names not found in list file.")
         return
     

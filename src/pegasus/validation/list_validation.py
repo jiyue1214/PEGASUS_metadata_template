@@ -69,7 +69,7 @@ class PegListValidation:
 
     def validate_peglist(self, error_limit: int = 50) -> List[dict]:
         headers = self.read_header()
-        classified = self.classify_headers(headers)
+        classified = self.classify_headers()
 
         missing_identifiers = []
         for field_name in ListIdentifiers.model_fields:

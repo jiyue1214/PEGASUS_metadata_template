@@ -23,6 +23,7 @@ class PegMatrixValidation:
             for name, col in MatrixIdentifiesPandera.to_schema().columns.items()
             if col.description
         }
+        self.headers = self.read_header()
 
     
     def read_header(self) -> List[str]:
@@ -31,14 +32,10 @@ class PegMatrixValidation:
         header = etl.header(table)
         return list(header)
 
-    def classify_headers(self, headers: list) -> dict[str, list[str]]:
+    def classify_headers(self) -> dict[str, list[str]]:
         """Classify headers into all categories in one pass."""
 
-        genetic = []
-        other_id = []
-        int_cols = []
-        evidence = []
-        other = []
+        headers = self.headers
 
         genetic = [x for x in headers if x in self.matrix_identifier_keys]
 
@@ -186,7 +183,7 @@ class PegMatrixValidation:
         if progress:
             print("Step 1/4: Reading header and classifying columns...")
         header = self.read_header()
-        classified_headers = self.classify_headers(header)
+        classified_headers = self.classify_headers()
         if classified_headers["other"]:
             self.errors.append(
                 {
