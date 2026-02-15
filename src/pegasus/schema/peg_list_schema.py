@@ -11,7 +11,7 @@ from pydantic import BaseModel, ConfigDict, Field, AliasChoices, StrictBool, Str
 VARIANT_ID_PATTERN = re.compile(
     r"^chr(?:[1-9]|1[0-9]|2[0-2]|X|Y|M|MT):[1-9]\d*:[ATGC]+:[ATGC]+$"
 )
-HGNC_SYMBOL_PATTERN = r"^[A-Z][A-Z0-9]*(?:-[A-Z0-9]+)*$"
+HGNC_SYMBOL_PATTERN = re.compile(r"^[A-Z][A-Z0-9]*(?:-[A-Z0-9]+)*$")
 
 
 class ListIdentifiers(BaseModel):
