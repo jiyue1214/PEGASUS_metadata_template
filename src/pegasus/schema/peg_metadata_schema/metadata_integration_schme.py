@@ -63,8 +63,8 @@ class Integration(BaseModel):
         json_schema_extra={"header": "threshold", "example": "0.05"}
     )
 
-    notes: Optional[LongText] = Field(
+    note: Optional[LongText] = Field(
         ...,        
         description="Extra details to aid interpretation.",
-        json_schema_extra={"header": "notes", "example": ""}
+        json_schema_extra={"header": "note", "example": ""}
     )
