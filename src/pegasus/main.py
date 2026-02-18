@@ -140,59 +140,116 @@ def cross_validate_list_matrix(
     list_file: Path,
     matrix_file: Path,
     metadata_file: Path | None = None,
-) -> None:
-    """Cross-validate PEG list, matrix, and metadata files."""
+) -> list[dict]:
+    """Cross-validate PEG list, matrix, and metadata files.
+
+    Returns a list of validation results in the same format as other validators.
+    """
+    results = []
+    step_num = 0
+    total_steps = 4  # Total number of cross-validation checks
 
     list_validator = PegListValidation(list_file)
     matrix_validator = PegMatrixValidation(matrix_file)
     if metadata_file is None:
-        console.print("[bold yellow]Warning:[/bold yellow] Metadata file missing; skipping cross validation.")
-        return
+        results.append({
+            "step": "Cross-validation skipped",
+            "type": "warning",
+            "message": "Metadata file missing; skipping cross validation.",
+        })
+        return results
+
     metadata_validator = PegMetadataValidation(metadata_file)
     metadata_validator.validate_metadata()
 
     list_columns = list_validator.classify_headers()
-    matrix_columns = matrix_validator.classify_headers()    
-    
-    # metadata columns
+    matrix_columns = matrix_validator.classify_headers()
+
+    # Check 1: Evidence column consistency between matrix and metadata
+    step_num += 1
     metadata_columns = metadata_validator.cross_check_column_names()
     metadata_columns = metadata_columns["Evidence"] + metadata_columns["Integration"]
 
     matrix_evidence = set(matrix_columns["evidence"]+ matrix_columns["int"])
     metadata_evidence = set(metadata_columns)
-    
+
     extra = matrix_evidence - metadata_evidence
     missing = metadata_evidence - matrix_evidence
     if extra or missing:
-        console.print("[bold red]Error:[/bold red] Mismatch in evidence columns between matrix and metadata files.")
+        error_msg = "Mismatch in evidence columns between matrix and metadata files."
+        details = []
         if extra:
-            console.print(f"  Matrix has extra evidence columns not in metadata: {sorted(extra)}")
+            details.append(f"Matrix has extra evidence columns not in metadata: {sorted(extra)}")
         if missing:
-            console.print(f"  Metadata has extra evidence columns not in matrix: {sorted(missing)}")
+            details.append(f"Metadata has extra evidence columns not in matrix: {sorted(missing)}")
 
-    # from metadata, get the records for the line which authors_conclusion is true
+        results.append({
+            "step": f"{step_num}/{total_steps} - Evidence Column Consistency",
+            "type": "error",
+            "message": error_msg,
+            "details": details,
+        })
+    else:
+        results.append({
+            "step": f"{step_num}/{total_steps} - Evidence Column Consistency",
+            "type": "info",
+            "message": f"Matrix and metadata evidence columns match ({len(matrix_evidence)} columns).",
+        })
+
+    # Check 2: Author conclusion records exist in metadata
+    step_num += 1
     author_conclusion = metadata_validator.return_author_conclusion_rows()
     if not author_conclusion:
-        console.print("[bold red]Error:[/bold red] No author conclusion records found.")
-        return
-    
+        results.append({
+            "step": f"{step_num}/{total_steps} - Author Conclusion Records",
+            "type": "error",
+            "message": "No author conclusion records found in metadata.",
+        })
+        return results
+    else:
+        results.append({
+            "step": f"{step_num}/{total_steps} - Author Conclusion Records",
+            "type": "info",
+            "message": f"Found {len(author_conclusion)} author conclusion record(s) in metadata.",
+        })
+
     conclusion_column_names=author_conclusion[0]["column_header"]
     conclusion_evidence_steams=author_conclusion[0]["evidence_streams_included"].split("|")
     conclusion_int_tags=author_conclusion[0]["integrations_included"].split("|")
 
+    # Check 3: Conclusion column exists in matrix file
+    step_num += 1
     all_matrix_headers = [h for headers in matrix_columns.values() for h in headers]
     if conclusion_column_names not in all_matrix_headers:
-        console.print("[bold red]Error:[/bold red] Conclusion column names not found in matrix file.")
-        return
+        results.append({
+            "step": f"{step_num}/{total_steps} - Conclusion Column in Matrix",
+            "type": "error",
+            "message": f"Conclusion column '{conclusion_column_names}' not found in matrix file.",
+        })
+    else:
+        results.append({
+            "step": f"{step_num}/{total_steps} - Conclusion Column in Matrix",
+            "type": "info",
+            "message": f"Conclusion column '{conclusion_column_names}' found in matrix file.",
+        })
 
+    # Check 4: Conclusion column exists in list file
+    step_num += 1
     all_list_headers = [h for headers in list_columns.values() for h in headers]
     if conclusion_column_names not in all_list_headers:
-        console.print("[bold red]Error:[/bold red] Conclusion column names not found in list file.")
-        return
-    
-    # Should we check the stream and tag here? 
+        results.append({
+            "step": f"{step_num}/{total_steps} - Conclusion Column in List",
+            "type": "error",
+            "message": f"Conclusion column '{conclusion_column_names}' not found in list file.",
+        })
+    else:
+        results.append({
+            "step": f"{step_num}/{total_steps} - Conclusion Column in List",
+            "type": "info",
+            "message": f"Conclusion column '{conclusion_column_names}' found in list file.",
+        })
 
-    return
+    return results
 #----------------------------------------------
 # Error formatting and UI response creation
 #----------------------------------------------
@@ -261,23 +318,29 @@ def format_errors_rich(errors: list[dict]) -> None:
                     error_msg = details.get("error", "")
                     console.print(Text(f"  Row {row_num}: ", style="dim") + Text(str(error_msg), style="red"))
             elif isinstance(details, list):
-                # List of row errors
-                for detail in details[:5]:  # Limit to first 5 details
-                    if isinstance(detail, dict):
-                        row = detail.get("row", "?")
-                        error_msg = detail.get("error", "")
-                        if isinstance(error_msg, list):
-                            # Format pydantic errors
-                            error_text = Text()
-                            error_text.append(f"  Row {row}:\n", style="dim")
-                            for err in error_msg[:3]:  # Limit to 3 errors per row
-                                if isinstance(err, dict):
-                                    loc = " -> ".join(str(x) for x in err.get("loc", []))
-                                    msg = err.get("msg", "")
-                                    error_text.append(f"    {loc}: {msg}\n", style="red")
-                            console.print(error_text)
-                        else:
-                            console.print(Text(f"  Row {row}: ", style="dim") + Text(str(error_msg), style="red"))
+                # Check if it's a list of strings (simple messages) or list of dicts (row errors)
+                if details and isinstance(details[0], str):
+                    # List of simple string messages (e.g., from cross-validation)
+                    for detail in details:
+                        console.print(Text(f"  • {detail}", style=color))
+                else:
+                    # List of row errors
+                    for detail in details[:5]:  # Limit to first 5 details
+                        if isinstance(detail, dict):
+                            row = detail.get("row", "?")
+                            error_msg = detail.get("error", "")
+                            if isinstance(error_msg, list):
+                                # Format pydantic errors
+                                error_text = Text()
+                                error_text.append(f"  Row {row}:\n", style="dim")
+                                for err in error_msg[:3]:  # Limit to 3 errors per row
+                                    if isinstance(err, dict):
+                                        loc = " -> ".join(str(x) for x in err.get("loc", []))
+                                        msg = err.get("msg", "")
+                                        error_text.append(f"    {loc}: {msg}\n", style="red")
+                                console.print(error_text)
+                            else:
+                                console.print(Text(f"  Row {row}: ", style="dim") + Text(str(error_msg), style="red"))
 
 
 def create_ui_response(
@@ -738,7 +801,11 @@ def handle_validate(args: argparse.Namespace) -> int:
         metadata_file = dir_related_files.get("metadata")
         if list_file and matrix_file and metadata_file:
             status_print("[cyan]Cross-validating list, matrix, and metadata files...[/cyan]")
-            cross_validate_list_matrix(list_file, matrix_file, metadata_file)
+            cross_results = cross_validate_list_matrix(list_file, matrix_file, metadata_file)
+            all_results["cross_validation"] = cross_results
+            file_paths["cross_validation"] = None  # No single file path for cross-validation
+            if any(e.get("type") == "error" for e in cross_results):
+                has_errors = True
     
     # Output results
     if args.format == "json":
@@ -749,8 +816,10 @@ def handle_validate(args: argparse.Namespace) -> int:
         # Rich terminal output
         for file_type, results in all_results.items():
             console.print()
+            # Format display name (replace underscores with hyphens)
+            display_name = file_type.replace("_", "-").upper()
             console.print(Panel(
-                f"[bold]{file_type.upper()} Validation Results[/bold]",
+                f"[bold]{display_name} Validation Results[/bold]",
                 border_style="blue",
                 title="[bold blue]PEGASUS[/bold blue]",
             ))
