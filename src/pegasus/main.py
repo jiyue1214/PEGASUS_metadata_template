@@ -328,16 +328,30 @@ def format_errors_rich(errors: list[dict]) -> None:
                     for detail in details[:5]:  # Limit to first 5 details
                         if isinstance(detail, dict):
                             row = detail.get("row", "?")
+                            key = detail.get("key", "")
                             error_msg = detail.get("error", "")
                             if isinstance(error_msg, list):
                                 # Format pydantic errors
                                 error_text = Text()
-                                error_text.append(f"  Row {row}:\n", style="dim")
+                                row_label = f"  Row {row}"
+                                if key:
+                                    row_label += f" ({key})"
+                                error_text.append(row_label + ":\n", style="dim")
                                 for err in error_msg[:3]:  # Limit to 3 errors per row
                                     if isinstance(err, dict):
                                         loc = " -> ".join(str(x) for x in err.get("loc", []))
                                         msg = err.get("msg", "")
-                                        error_text.append(f"    {loc}: {msg}\n", style="red")
+                                        value = err.get("value", "")
+                                        hint = err.get("hint", "")
+                                        expected = err.get("expected_example", "")
+                                        error_text.append(f"    {loc}: {msg}", style="red")
+                                        if value:
+                                            error_text.append(f"  [got: {value}]", style="yellow")
+                                        error_text.append("\n")
+                                        if expected:
+                                            error_text.append(f"      expected example: {expected}\n", style="cyan")
+                                        if hint:
+                                            error_text.append(f"      hint: {hint}\n", style="yellow")
                                 console.print(error_text)
                             else:
                                 console.print(Text(f"  Row {row}: ", style="dim") + Text(str(error_msg), style="red"))
@@ -645,9 +659,11 @@ def handle_convert(args: argparse.Namespace) -> int:
                 return 1
         
         elif args.conversion_type == "schema-to-xlsx":
-            if not args.output_path:
+            output_path = args.output_path or args.input_path
+            if not output_path:
                 console.print("[bold red]Error:[/bold red] Output Excel file path required for schema-to-xlsx")
                 return 1
+            args.output_path = output_path
             
             console.print(f"[cyan]Generating Excel template from schema:[/cyan] {args.output_path}")
             from pegasus.template_convert.spreadsheet_builder import generate_excel_from_pydantic
@@ -704,14 +720,9 @@ def handle_validate(args: argparse.Namespace) -> int:
         "metadata": lambda p: validate_metadata(p, error_limit=args.error_limit),
     }
     
-    # Helper to print status (only for text format)
-    def status_print(msg: str) -> None:
-        if args.format == "text":
-            console.print(msg)
 
     def run_validation(file_type: str, file_path: Path) -> None:
         nonlocal has_errors, metadata_validator
-        status_print(f"[cyan]Validating {file_type} file:[/cyan] {file_path}")
         
         # For metadata, store the validator instance for cross-file validation
         if file_type == "metadata":
@@ -800,7 +811,6 @@ def handle_validate(args: argparse.Namespace) -> int:
         matrix_file = dir_related_files.get("matrix")
         metadata_file = dir_related_files.get("metadata")
         if list_file and matrix_file and metadata_file:
-            status_print("[cyan]Cross-validating list, matrix, and metadata files...[/cyan]")
             cross_results = cross_validate_list_matrix(list_file, matrix_file, metadata_file)
             all_results["cross_validation"] = cross_results
             file_paths["cross_validation"] = None  # No single file path for cross-validation
@@ -818,8 +828,10 @@ def handle_validate(args: argparse.Namespace) -> int:
             console.print()
             # Format display name (replace underscores with hyphens)
             display_name = file_type.replace("_", "-").upper()
+            fp = file_paths.get(file_type)
+            filename_str = f"  {fp.name}" if fp else ""
             console.print(Panel(
-                f"[bold]{display_name} Validation Results[/bold]",
+                f"[bold]{display_name} Validation Results[/bold]{filename_str}",
                 border_style="blue",
                 title="[bold blue]PEGASUS[/bold blue]",
             ))

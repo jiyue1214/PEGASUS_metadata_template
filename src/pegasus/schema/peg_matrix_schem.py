@@ -35,7 +35,7 @@ class MatrixIdentifiesPydantic(BaseModel):
         examples=["chr10:114700000-114800000"],
         pattern=r"^chr(?:[1-9]|1[0-9]|2[0-2]|X|Y|M|MT):[1-9]\d*-[1-9]\d*$"
     )
-    Locus_ID: Optional[str] = Field(
+    LocusID: Optional[str] = Field(
         None, 
         description="Internal or curated region ID. Recommended to use the associated variant (chr:bp or rsID); internal IDs may also be “Locus 1, Locus 2”.",
         examples=["chr10:114754071:T:C"]
@@ -63,12 +63,12 @@ class MatrixIdentifiesPandera(pa.SchemaModel):
             "must start with a letter (e.g. BRCA1, HLA-DQA1, NKX2-1)."
         ),
     )
-    LocusRange: Series[str] = pa.Field(
+    LocusRange: Optional[Series[str]] = pa.Field(
         nullable=True,
         str_matches=r"^chr(?:[1-9]|1[0-9]|2[0-2]|X|Y|M|MT):[1-9]\d*-[1-9]\d*$",
         description="Expected chr#:start-end (e.g., chr10:114700000-114800000).",
     )
-    Locus_ID: Series[str] = pa.Field(nullable=True)
+    LocusID: Optional[Series[str]] = pa.Field(nullable=True)
 
     class Config:
         strict = True
