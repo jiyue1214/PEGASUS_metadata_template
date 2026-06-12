@@ -69,7 +69,7 @@ class Source(BaseModel):
     )
 
     note: Optional[LongText] = Field(
-        ...,        
+        default=None,       
         description="Extra details to aid interpretation of the source.",
         json_schema_extra={"header": "note", "example": "The analysis includes only samples from individuals aged 20–29."}
     )

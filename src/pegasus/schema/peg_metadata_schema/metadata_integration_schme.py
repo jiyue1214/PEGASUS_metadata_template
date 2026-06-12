@@ -58,13 +58,13 @@ class Integration(BaseModel):
     )
 
     threshold: Optional[ShortText] = Field(
-        ...,        
+        default=None,        
         description="Threshold applied to define significance or inclusion criteria.",
         json_schema_extra={"header": "threshold", "example": "0.05"}
     )
 
     note: Optional[LongText] = Field(
-        ...,        
+        default=None,        
         description="Extra details to aid interpretation.",
         json_schema_extra={"header": "note", "example": ""}
     )
