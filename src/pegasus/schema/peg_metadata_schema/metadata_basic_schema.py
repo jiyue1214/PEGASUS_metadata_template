@@ -1,4 +1,4 @@
-from typing import  Literal, Optional
+from typing import Optional
 import re
 from pydantic import BaseModel, Field, HttpUrl, model_validator
 from pegasus.schema.core import (
@@ -34,13 +34,13 @@ class DatasetDescription(BaseModel):
         json_schema_extra={"header": "trait_ontology_id", "example": "EFO_0800173"},
     )
 
-    peg_source: Optional[GCST | PMID | HttpUrl | DOI] = Field(
+    peg_source: Optional[PMID | HttpUrl | DOI | str] = Field(
         default=None,
         description="Identifier of the origin of the PEG list (e.g., publication, DOI, preprint, URL).",
         json_schema_extra={"header": "peg_source", "example": "PMID:36357675"},
     )
 
-    gwas_source: Optional[GCST | PMID | HttpUrl | DOI] = Field(
+    gwas_source: Optional[GCST | PMID | HttpUrl | DOI | str] = Field(
         default=None,
         description="Identifier of the GWAS source. Prefer GWAS Catalog accession (GCST); if not available, use PubMed ID, doi, url",
         json_schema_extra={"header": "gwas_source", "example": "GCST000001"},

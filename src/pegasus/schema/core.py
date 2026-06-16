@@ -118,7 +118,7 @@ EVIDENCE_CATEGORY_MAP: dict[str, str] = {
 
 class EvidenceCategoryAbbreviation(str, Enum):
     LD = "LD"
-    FINEMAP = "FINEMAP"
+    FM = "FM"
     COLOC = "COLOC"
     QTL = "QTL"
     MR = "MR"
